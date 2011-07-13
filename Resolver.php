@@ -171,4 +171,83 @@ class Resolver
             return $target;
         }
     }
+
+    /**
+     * Resolves the path segment as a modifier
+     * 
+     * @param mixed $object Variable to resolve from
+     * @param string $path Path to resolve the variable on
+     * @param mixed $value value to set
+     */
+    public function set($object, $path, $value)
+    {
+        // Resolve the last segment of the path for the modification
+        if(substr($path,-1) === self::ARRAY_END)
+        {
+            $start = strrpos($path,self::ARRAY_BEGIN);
+            if($start === false) throw new SegmentResolverException($object,$path);
+
+            $segment = substr($path,$start+1,-1);
+            $prefix = substr($path,$start);
+            $target = $prefix ? $this->get($object,$prefix) : $object;
+
+            if(is_array($target) || $target instanceof ArrayAccess)
+            {
+                $target[$segment] = $value;
+                return;
+            }
+            else
+            {
+                throw new PathResolverException($object,$path,"Cannot set the value of a variable that is not accessable as an array.");
+            }
+        }
+        else
+        {
+            $start = max(strrpos($path,self::ARRAY_END),strrpos($path,self::DELIMITER));
+            if($start === false) $start = 0;
+            else $start++;
+
+            $segment = substr($path,$start);
+            $prefix = substr($path,0,$start);
+            $target = $prefix ? $this->get($object,$prefix) : $object;
+
+            // Arrays are easlity handled
+            if(is_array($target))
+            {
+                $target[$segment] = $value;
+                return;
+            }
+
+            $class = new ReflectionClass($target);
+            $property = $class->hasProperty($segment) ? $class->getProperty($segment) : null;
+            if($property != null && $property->isPublic())
+            {
+                $property->setValue($target,$value);
+                return;
+            }
+
+            $methodsAttempted = array();
+            foreach($this->modifierPrefixes as $prefix)
+            {
+                $method = $prefix.ucfirst($segment);
+                if(is_callable(array($target,$method)))
+                {
+                    $target = call_user_func(array($target,$method),$value);
+                    return;
+                }
+                else
+                {
+                    $methodsAttempted[] = "$method()";
+                }
+            }
+
+            if($target instanceof ArrayAccess)
+            {
+                $target[$segment] = $value;
+                return;
+            }
+
+            throw new SegmentResolverException($object,$path,null,$methodsAttempted);
+        }
+    }
 }
