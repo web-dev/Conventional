@@ -60,9 +60,10 @@ class StringTransformer
             }
 
             // Resolve captured string
-            $result.= substr($this->string,$pos,$start);
+            $result.= substr($this->string,$pos,$start-$pos);
             $length = $end - $start;
             $path = substr($this->string,$start+1,$length-1);
+
             if($this->getThrowExceptions())
             {
                 $result .= $resolver->get($this->object,$path);
