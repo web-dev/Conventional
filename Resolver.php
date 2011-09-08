@@ -81,13 +81,18 @@ class Resolver
         }
         else
         {
-            $terminator = min(strpos(self::DELIMITER,$path),strpos(self::ARRAY_BEGIN,$path));
-            if($terminator === false)
+            $array = strpos($path,self::ARRAY_BEGIN);
+            $delimiter = strpos($path,self::DELIMITER);
+            if($array === false && $delimiter === false)
             {
+                $terminator = false;
                 $segment = $path;
             }
             else
             {
+                if($array === false)         $terminator = $delimiter;
+                elseif($delimiter === false) $terminator = $array;
+                else                         $terminator = min($delimiter,$array);
                 $segment = substr($path,0,$terminator);
             }
 
@@ -164,7 +169,7 @@ class Resolver
 
         if(strlen($remainder)>0)
         {
-            return $this->get($object,$remainder);
+            return $this->get($target,$remainder);
         }
         else
         {
